@@ -1,0 +1,30 @@
+# Frameworks para o Agente
+jupyter_kernel_gateway
+openai
+
+# Automação Web e Scraping
+playwright
+beautifulsoup4
+requests
+selenium
+
+# Análise e Manipulação de Dados
+pandas
+numpy
+
+# RAG (Retrieval-Augmented Generation)
+faiss-cpu
+sentence-transformers
+
+# Comunicação com Jupyter (WebSockets)
+websockets
+
+# Interface de Usuário
+gradio
+
+# Testes
+pytest
+pytest-asyncio
+
+# Outras bibliotecas úteis
+python-dotenv

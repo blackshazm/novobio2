@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # Serviço 1: LLM Server (O Cérebro)
+  # Este serviço usa vLLM para servir o modelo CodeActAgent.
+  # REQUER UMA GPU NVIDIA COM DRIVERS E NVIDIA CONTAINER TOOLKIT INSTALADOS.
+  llm-server:
+    image: vllm/vllm-openai:latest
+    command: >
+      --host 0.0.0.0
+      --port 8000
+      --model /app/model
+      --tensor-parallel-size 1
+      --max-model-len 4096
+    volumes:
+      # O usuário deve montar o diretório do modelo baixado aqui.
+      # Exemplo: ./CodeActAgent-Mistral-7b-v0.1:/app/model
+      - ./model:/app/model:ro
+    ports:
+      - "8080:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Serviço 2: Code Executor (O Sandbox)
+  # Este serviço constrói a partir do nosso Dockerfile e executa o Jupyter Kernel Gateway.
+  code-executor:
+    build:
+      context: .
+      dockerfile: code-executor.Dockerfile
+    command: >
+      jupyter kernelgateway
+      --KernelGatewayApp.api='jupyter.kernel_gateway.notebook_http'
+      --KernelGatewayApp.ip='0.0.0.0'
+      --KernelGatewayApp.port=8888
+      --KernelGatewayApp.allow_origin='*'
+      --KernelGatewayApp.allow_credentials='*'
+    volumes:
+      # Monta um workspace para que o agente possa ler/escrever arquivos persistentes.
+      - ./workspace:/home/jovyan/work
+    ports:
+      - "8888:8888"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/api/kernelspecs"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Serviço 3: Chat UI (A Interface)
+  # Este serviço executa a interface de chat.
+  # O código-fonte para a UI precisa estar no diretório 'chat-ui'.
+  # O usuário precisará clonar o chat-ui do repositório do huggingface ou do code-act.
+  chat-ui:
+    build:
+      context: ./chat-ui # O diretório 'chat-ui' deve conter o código da aplicação
+    ports:
+      - "5173:5173"
+    environment:
+      # O .env.local dentro de chat-ui/ deve ser configurado para apontar para os outros serviços.
+      # Exemplo de variáveis de ambiente que o chat-ui pode precisar:
+      - MONGODB_URL=mongodb://mongo:27017
+      - OPENAI_API_KEY=dummy
+      - OPENAI_API_BASE=http://llm-server:8000/v1
+      - JUPYTER_API_URL=http://code-executor:8888
+    depends_on:
+      llm-server:
+        condition: service_healthy
+      code-executor:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    restart: on-failure
+
+  # Serviço 4: MongoDB (Banco de Dados para a Chat-UI opcional)
+  mongo:
+    image: mongo:5.0
+    volumes:
+      - ./data/mongodb:/data/db
+    restart: always
+
+  # Serviço 5: Gradio App (Nossa UI Principal)
+  # Usa a mesma imagem do code-executor pois já tem todas as dependências Python.
+  gradio-app:
+    build:
+      context: .
+      dockerfile: code-executor.Dockerfile
+    command: python app.py
+    volumes:
+      # Monta o código da aplicação e o workspace compartilhado
+      - .:/home/jovyan/work
+    working_dir: /home/jovyan/work
+    ports:
+      - "7860:7860"
+    depends_on:
+      llm-server:
+        condition: service_healthy
+      code-executor:
+        condition: service_healthy
+    restart: on-failure
+
+volumes:
+  model:
+  workspace:
+  data:
+  chat-ui: # Opcional: O usuário pode preencher este diretório para usar a chat-ui externa
