@@ -8,38 +8,43 @@ from agent_src.main import Agent
 # Para executar apenas estes testes: `pytest -m integration`
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_agent_creates_file_e2e():
+async def test_agent_creates_flask_app_e2e():
     """
     Testa um fluxo de ponta a ponta onde o agente recebe a tarefa de criar
-    um arquivo com conteúdo específico.
+    uma aplicação web Flask simples.
+    O teste verifica se o agente usa a ferramenta de scaffolding para criar
+    a estrutura de arquivos esperada.
     """
     # Definição da Tarefa
-    task = "Crie um arquivo chamado 'test_output.txt' no diretório 'workspace' com o conteúdo exato 'hello from test'."
+    project_name = "meu_site_teste"
+    task = f"Crie um site Flask 'hello world' chamado '{project_name}'. Use a ferramenta de scaffolding."
 
-    # Caminho para o arquivo que esperamos que o agente crie
-    output_filepath = "workspace/test_output.txt"
+    # Caminhos para os arquivos que esperamos que o agente crie
+    base_path = os.path.join("workspace", project_name)
+    app_py_path = os.path.join(base_path, "app.py")
+    index_html_path = os.path.join(base_path, "templates", "index.html")
 
-    # Garantir que o arquivo não existe antes do teste
-    if os.path.exists(output_filepath):
-        os.remove(output_filepath)
+    # Garantir que o diretório não existe antes do teste
+    if os.path.exists(base_path):
+        import shutil
+        shutil.rmtree(base_path)
 
     # Instanciar e executar o agente
     agent = Agent()
     await agent.run(task)
 
     # Verificações (Asserts)
-    # 1. Verificar se o arquivo foi criado
-    assert os.path.exists(output_filepath), f"O agente falhou em criar o arquivo em {output_filepath}"
+    # Verificar se os arquivos principais foram criados pela ferramenta de scaffolding
+    assert os.path.isdir(base_path), f"O diretório do projeto '{base_path}' não foi criado."
+    assert os.path.exists(app_py_path), f"O agente falhou em criar o arquivo principal '{app_py_path}'."
+    assert os.path.exists(index_html_path), f"O agente falhou em criar o template inicial '{index_html_path}'."
 
-    # 2. Verificar se o conteúdo do arquivo está correto
-    with open(output_filepath, 'r') as f:
+    # Verificar o conteúdo do app.py para garantir que é um app Flask
+    with open(app_py_path, 'r') as f:
         content = f.read()
-    assert content == "hello from test", f"O conteúdo do arquivo é '{content}', mas esperávamos 'hello from test'"
+    assert "from flask import Flask" in content, "O arquivo app.py não parece ser uma aplicação Flask."
 
-    # Limpeza
-    # Deixar o arquivo para inspeção manual, se desejado, ou remover.
-    # print(f"Teste concluído. O arquivo de saída '{output_filepath}' foi criado com sucesso.")
-    # os.remove(output_filepath)
+    print(f"\nTeste de integração concluído com sucesso. Projeto '{project_name}' foi criado.")
 
 # Para executar este teste:
 # 1. Certifique-se de que o ambiente Docker está em execução com `docker-compose up -d`.
