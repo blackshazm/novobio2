@@ -1,13 +1,11 @@
 import os
 
-# URL para o servidor do LLM (serviço 'llm-server' no docker-compose)
-# A porta interna do container é 8000, conforme o comando no docker-compose.yml.
-LLM_API_BASE = os.getenv("LLM_API_BASE", "http://llm-server:8000/v1")
+# URL para o servidor do LLM (serviço 'llm-server' no docker-compose, agora rodando Ollama)
+# A porta padrão do Ollama é 11434.
+LLM_API_BASE = os.getenv("LLM_API_BASE", "http://llm-server:11434/v1")
 
-# Nome do modelo que estamos usando, conforme servido pelo vLLM.
-# O nome do modelo pode ser diferente dependendo de como o vLLM o registra.
-# Usamos o nome do diretório como um padrão razoável.
-LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "CodeActAgent-Mistral-7b-v0.1")
+# Nome do modelo que estamos usando, conforme registrado no Ollama.
+LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "xingyaow/codeact-agent-mistral")
 
 # URL para o executor de código (serviço 'code-executor' no docker-compose)
 JUPYTER_GATEWAY_URL = os.getenv("JUPYTER_GATEWAY_URL", "http://code-executor:8888")

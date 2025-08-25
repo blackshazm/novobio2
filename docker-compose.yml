@@ -1,33 +1,21 @@
 version: '3.8'
 
 services:
-  # Serviço 1: LLM Server (O Cérebro)
-  # Este serviço usa vLLM para servir o modelo CodeActAgent.
-  # REQUER UMA GPU NVIDIA COM DRIVERS E NVIDIA CONTAINER TOOLKIT INSTALADOS.
+  # Serviço 1: LLM Server (O Cérebro) - AGORA USANDO OLLAMA
+  # Este serviço usa Ollama para servir o modelo CodeActAgent.
+  # Não requer mais uma GPU NVIDIA.
   llm-server:
-    image: vllm/vllm-openai:latest
-    command: >
-      --host 0.0.0.0
-      --port 8000
-      --model /app/model
-      --tensor-parallel-size 1
-      --max-model-len 4096
+    build:
+      context: .
+      dockerfile: ollama.Dockerfile
     volumes:
-      # O usuário deve montar o diretório do modelo baixado aqui.
-      # Exemplo: ./CodeActAgent-Mistral-7b-v0.1:/app/model
-      - ./model:/app/model:ro
+      # Volume para persistir os modelos baixados pelo Ollama
+      - ollama_data:/root/.ollama
     ports:
-      - "8080:8000"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      - "11434:11434"
     restart: on-failure
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -110,7 +98,7 @@ services:
     restart: on-failure
 
 volumes:
-  model:
+  ollama_data:
   workspace:
   data:
   chat-ui: # Opcional: O usuário pode preencher este diretório para usar a chat-ui externa
